@@ -1,0 +1,617 @@
+<!doctype html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Chi fa cosa</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,700&family=Figtree:wght@400;500;600&display=swap">
+<style>
+/* Layout: one narrow column — week balance on top, day strip, then the day's checklist grouped by moment of the day */
+:root{
+  --bg:#F2F5F4; --surface:#FFFFFF; --ink:#1C2422; --muted:#5B6863; --line:#DAE1DE;
+  --a:#B8365A; --a-soft:#F7E0E6; --b:#1C6A80; --b-soft:#DAECF1; --on:#FFFFFF;
+  --warn:#8A5A00; --warn-soft:#FBF0D9;
+  --s1:#6A4BB0; --s2:#3F7A22; --s3:#9A5B12;
+  --display:"Bricolage Grotesque", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --body:"Figtree", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#131917; --surface:#1B2320; --ink:#E6EDEA; --muted:#98A6A0; --line:#2C3733;
+  --a:#F07C99; --a-soft:#3B222A; --b:#62B7D0; --b-soft:#16303A; --on:#131917;
+  --warn:#F2C46B; --warn-soft:#3A2F17; --s1:#B6A2F2; --s2:#9DD072; --s3:#EDB269; color-scheme:dark }}
+:root[data-theme="dark"]{
+  --bg:#131917; --surface:#1B2320; --ink:#E6EDEA; --muted:#98A6A0; --line:#2C3733;
+  --a:#F07C99; --a-soft:#3B222A; --b:#62B7D0; --b-soft:#16303A; --on:#131917;
+  --warn:#F2C46B; --warn-soft:#3A2F17; --s1:#B6A2F2; --s2:#9DD072; --s3:#EDB269; color-scheme:dark }
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+html{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+body{margin:0}
+img{max-width:100%}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:680px;margin:0 auto;display:flex;flex-direction:column;gap:18px}
+h1{font-family:var(--display);font-weight:700;font-size:30px;line-height:1.1;margin:0;letter-spacing:-.01em;text-wrap:balance}
+h2{font-family:var(--display);font-weight:600;font-size:18px;margin:0}
+.sub{color:var(--muted);margin:4px 0 0}
+.num{font-variant-numeric:tabular-nums}
+button{font:inherit;color:inherit;cursor:pointer}
+button:focus-visible,input:focus-visible,summary:focus-visible{outline:2px solid var(--b);outline-offset:2px}
+button:disabled{cursor:default}
+
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px}
+.weekhead{display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.nav{display:flex;gap:6px}
+.nav button{border:1px solid var(--line);background:var(--bg);border-radius:8px;padding:6px 10px;font-size:13px}
+.totals{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:14px}
+.tot .who{font-size:12px;text-transform:uppercase;letter-spacing:.06em;font-weight:600}
+.tot.a .who{color:var(--a)} .tot.b .who{color:var(--b)}
+.tot .val{font-family:var(--display);font-weight:600;font-size:24px}
+.bar{display:flex;height:10px;border-radius:5px;overflow:hidden;background:var(--line);margin-top:12px}
+.bar span{display:block;height:100%;transition:width .3s}
+.bar .sa{background:var(--a)} .bar .sb{background:var(--b)}
+.diff{color:var(--muted);font-size:13px;margin-top:8px}
+
+.days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:6px}
+.day{border:1px solid var(--line);background:var(--surface);border-radius:10px;padding:8px 2px 7px;display:flex;flex-direction:column;align-items:center;gap:2px}
+.day .wd{font-size:11px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.day .dn{font-family:var(--display);font-weight:600;font-size:18px}
+.day .mini{display:flex;width:70%;height:4px;border-radius:2px;overflow:hidden;background:var(--line);margin-top:3px}
+.day .mini span{height:100%}
+.day.sel{border-color:var(--ink);box-shadow:inset 0 0 0 1px var(--ink)}
+.day.today .wd{color:var(--ink);font-weight:600}
+
+.dayhead{display:flex;justify-content:space-between;align-items:baseline;gap:10px;flex-wrap:wrap}
+.daytot{font-size:13px;color:var(--muted)}
+.daytot b.a{color:var(--a)} .daytot b.b{color:var(--b)}
+.group{margin-top:14px}
+.group h3{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--muted);font-weight:600;margin:0 0 4px}
+.row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:center;padding:10px 0;border-top:1px solid var(--line)}
+.row:first-of-type,.group h4+.row{border-top:0}
+.group h4{font-family:var(--display);font-weight:600;font-size:15px;margin:12px 0 0;padding-top:10px;border-top:1px solid var(--line)}
+.group h3+h4{margin-top:0;padding-top:0;border-top:0}
+.group h4::before{content:"";display:inline-block;width:8px;height:8px;border-radius:50%;background:currentColor;margin-right:8px;vertical-align:1px}
+.group h4.s-extra{color:var(--muted)}
+.linkbtn{border:0;background:none;padding:0;color:var(--muted);text-decoration:underline;font-size:13px}
+.share{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:12px}
+.sharebtn{border:1px solid var(--ink);background:var(--ink);color:var(--bg);border-radius:999px;padding:8px 16px;font-weight:600;font-size:14px}
+#share-box{margin-top:10px;display:flex;flex-direction:column;gap:6px}
+#share-box textarea{font:inherit;font-size:14px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px;width:100%;resize:vertical}
+.resetbtn{margin-left:auto}
+.resetbox{margin-top:10px;display:flex;flex-direction:column;gap:10px}
+.resetact{display:flex;gap:8px;flex-wrap:wrap}
+.dangerbtn{border:0;background:var(--a);color:var(--on);border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px}
+.plainbtn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:999px;padding:7px 14px;font-weight:600;font-size:14px}
+.addext{display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;padding:10px 0 2px;border-top:1px solid var(--line)}
+.addext label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);min-width:0}
+.addext label:first-child{flex:1 1 180px}
+.addext input{font:inherit;font-size:15px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:7px 10px;min-width:0;width:100%}
+.addext label:nth-child(2) input{width:80px}
+.addext .seg button{color:var(--ink)}
+.group h4.s-bucato{color:var(--s1)} .group h4.s-cucina{color:var(--s2)} .group h4.s-spazz{color:var(--s3)}
+.tname{font-weight:500}
+.tmeta{font-size:13px;color:var(--muted)}
+.seg{display:flex;border:1px solid var(--line);border-radius:999px;padding:2px;gap:2px;background:var(--bg)}
+.seg button{border:0;background:transparent;border-radius:999px;padding:6px 12px;font-size:13px;font-weight:600;color:var(--muted);min-width:64px;white-space:nowrap;max-width:110px;overflow:hidden;text-overflow:ellipsis}
+.seg button[data-who="a"][aria-pressed="true"]{background:var(--a);color:var(--on)}
+.seg button[data-who="b"][aria-pressed="true"]{background:var(--b);color:var(--on)}
+.seg button[data-bagno][aria-pressed="true"],.seg button[data-asilo][aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.seg button:not(:disabled):hover[aria-pressed="false"]{color:var(--ink)}
+.row.done-a .tname{color:var(--a)} .row.done-b .tname{color:var(--b)}
+.mins{display:flex;align-items:center;gap:8px;margin-top:6px;font-size:13px;color:var(--muted)}
+.mins input[type="time"]{width:auto}
+.mins input{font:inherit;font-size:14px;width:68px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:4px 8px}
+
+.note{font-size:13px;border-radius:10px;padding:10px 12px;background:var(--warn-soft);color:var(--warn)}
+.hint{font-size:13px;color:var(--muted)}
+details{font-size:14px}
+summary{cursor:pointer;color:var(--muted);font-weight:500}
+.names{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+.names label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.names input{font:inherit;font-size:15px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;text-transform:none;letter-spacing:0;min-width:0}
+@media (max-width:420px){
+  .seg button{min-width:54px;padding:6px 9px}
+  .day .dn{font-size:16px}
+  h1{font-size:26px}
+}
+@media (prefers-reduced-motion:reduce){.bar span{transition:none}}
+
+.sync{display:flex;align-items:center;gap:10px;flex-wrap:wrap;font-size:13px;color:var(--muted)}
+.sync .dot{width:8px;height:8px;border-radius:50%;background:var(--muted);display:inline-block;margin-right:6px}
+.sync.ok .dot{background:var(--s2)} .sync.err .dot{background:var(--a)}
+.setup{display:flex;flex-direction:column;gap:12px}
+.setup label{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em}
+.setup input{font:inherit;font-size:15px;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:8px 10px;text-transform:none;letter-spacing:0;min-width:0;width:100%}
+.setup ol{margin:0;padding-left:20px;font-size:14px;line-height:1.5}
+.setup .acts{display:flex;gap:8px;flex-wrap:wrap}
+.names3{grid-template-columns:1fr 1fr 1fr}
+@media (max-width:520px){.names3{grid-template-columns:1fr}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <h1>Chi fa cosa</h1>
+    <p class="sub">Segnate ogni giorno chi ha fatto cosa. I dati sono salvati nel vostro repository GitHub privato.</p>
+    <div class="sync" id="sync"><span><span class="dot"></span><span id="sync-txt">Non collegato</span></span><button id="sync-now" class="linkbtn" hidden>Aggiorna adesso</button></div>
+  </header>
+
+  <details class="panel" id="setup-panel">
+    <summary>Collegamento a GitHub</summary>
+    <div class="setup">
+      <p class="hint">Serve una volta sola su ogni telefono o computer. Il token resta salvato solo in questo browser.</p>
+      <ol>
+        <li>Su GitHub apri <b>Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token</b>.</li>
+        <li>In <b>Repository access</b> scegli <b>Only select repositories</b> e seleziona il repository dei dati.</li>
+        <li>In <b>Permissions → Repository permissions</b> metti <b>Contents</b> su <b>Read and write</b>.</li>
+        <li>Genera il token, copialo e incollalo qui sotto.</li>
+      </ol>
+      <label for="cfg-repo">Repository dei dati<input id="cfg-repo" autocomplete="off" spellcheck="false" placeholder="utente/chi-fa-cosa-dati"></label>
+      <label for="cfg-token">Token<input id="cfg-token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…"></label>
+      <div class="acts"><button id="cfg-save" class="sharebtn">Collega</button><button id="cfg-off" class="plainbtn" hidden>Scollega questo dispositivo</button></div>
+      <p class="hint" id="cfg-msg" role="status"></p>
+    </div>
+  </details>
+
+  <section class="panel" aria-labelledby="wk">
+    <div class="weekhead">
+      <h2 id="wk">Settimana</h2>
+      <div class="nav">
+        <button id="prev" aria-label="Settimana precedente">‹</button>
+        <button id="oggi">Oggi</button>
+        <button id="next" aria-label="Settimana successiva">›</button>
+      </div>
+    </div>
+    <div class="sub num" id="wkrange"></div>
+    <div class="totals">
+      <div class="tot a"><div class="who" id="lblA">Mamma</div><div class="val num" id="totA">0 min</div></div>
+      <div class="tot b"><div class="who" id="lblB">Papà</div><div class="val num" id="totB">0 min</div></div>
+    </div>
+    <div class="bar" aria-hidden="true"><span class="sa" id="barA" style="width:0"></span><span class="sb" id="barB" style="width:0"></span></div>
+    <div class="diff num" id="diff"></div>
+  </section>
+
+  <nav class="days" id="days" aria-label="Giorni della settimana"></nav>
+
+  <section class="panel" aria-labelledby="dtitle">
+    <div class="dayhead">
+      <h2 id="dtitle"></h2>
+      <div class="daytot num" id="daytot"></div>
+    </div>
+    <div id="stato" class="hint" style="margin-top:8px">Caricamento…</div>
+    <div class="share">
+      <button id="share-btn" class="sharebtn">Copia il riassunto del giorno</button>
+      <span id="share-msg" class="hint" role="status"></span>
+      <button id="reset-btn" class="linkbtn resetbtn">Cancella i dati del giorno</button>
+    </div>
+    <div id="reset-box" class="note resetbox" role="alertdialog" aria-labelledby="reset-q" hidden>
+      <span id="reset-q"></span>
+      <div class="resetact"><button id="reset-yes" class="dangerbtn">Sì, cancella</button><button id="reset-no" class="plainbtn">Annulla</button></div>
+    </div>
+    <div id="share-box" hidden>
+      <label for="share-text" class="hint">Riassunto. Se la copia non è partita, selezionalo e copialo a mano.</label>
+      <textarea id="share-text" readonly rows="10"></textarea>
+    </div>
+    <div id="list"></div>
+  </section>
+
+  <details class="panel">
+    <summary>Nomi</summary>
+    <div class="names names3">
+      <label for="nome-a">Persona 1<input id="nome-a" maxlength="20" value="Mamma"></label>
+      <label for="nome-b">Persona 2<input id="nome-b" maxlength="20" value="Papà"></label>
+      <label for="nome-c">Bambina<input id="nome-c" maxlength="20" placeholder="nome"></label>
+    </div>
+    <p class="hint">I nomi sono salvati nel repository privato, non nel codice della pagina.</p>
+  </details>
+</div>
+
+<script>
+const ALL=[0,1,2,3,4,5,6];
+const TASKS=[
+  {id:'prep',   g:'Mattina',    modo:'asilo', nome:'Preparare {bimba}', min:25, giorni:ALL},
+  {id:'asilo',  g:'Mattina',    modo:'asilo', nome:"Portare {bimba} all'asilo", nota:'35 min andata e ritorno', min:35, giorni:ALL},
+  {id:'giocoM', g:'Mattina',    modo:'casa',  nome:'Intrattenimento {bimba} (mattina)', orari:['07:30','13:00'], min:330, giorni:ALL},
+  {id:'parco',  g:'Pomeriggio', modo:'asilo', nome:'Ritiro + parco + merenda', nota:'16:20–18:00', min:100, giorni:ALL},
+  {id:'ritiro', g:'Pomeriggio', modo:'asilo', nome:'Ritiro alle 17:15', nota:'senza parco', min:45, giorni:ALL},
+  {id:'cucina', g:'Pomeriggio', modo:'asilo', nome:'Cucinare per {bimba}', nota:'cena delle 18:15', min:36, giorni:ALL},
+  {id:'giocoP', g:'Pomeriggio', modo:'casa',  nome:'Intrattenimento {bimba} (pomeriggio)', orari:['15:30','20:30'], min:300, giorni:ALL},
+  {id:'pranzo', g:'Pranzo e cena', modo:'casa', nome:'Cucinare il pranzo', min:45, giorni:ALL},
+  {id:'cena',   g:'Pranzo e cena', modo:'casa', nome:'Cucinare la cena', min:45, giorni:ALL},
+  {id:'cenabimba', g:'Sera',    nome:'Cena di {bimba}', min:30, giorni:ALL},
+  {id:'gioco',  g:'Sera',       modo:'asilo', nome:'Intrattenimento {bimba} (aerosol, gioco, vasino, ecc.)', nota:'dopo cena fino alle 20:15', min:90, giorni:ALL, bagno:false},
+  {id:'bagno',  g:'Sera',       nome:'Bagnetto in acqua', min:15, giorni:ALL, bagno:true},
+  {id:'dopobagno', g:'Sera',    nome:'Dopo-bagnetto', nota:'pannolino, crema, capelli, phon', min:25, giorni:ALL, bagno:true},
+  {id:'nanna',  g:'Sera',       nome:'Addormentamento {bimba}', min:25, giorni:ALL},
+  {id:'borsa',  g:'Sera',       nome:"Preparare le cose per l'asilo", nota:'lenzuola, bavaglini, vestiti, pannolini col nome', min:60, giorni:[0]},
+  {id:'lv-riempi',  g:'Casa', sub:'Cucina', nome:'Riempire la lavastoviglie', min:8, giorni:ALL},
+  {id:'lv-svuota',  g:'Casa', sub:'Cucina', nome:'Svuotare la lavastoviglie', min:10, giorni:ALL},
+  {id:'lt-riempi',  g:'Casa', sub:'Bucato', nome:'Riempire la lavatrice', min:10, giorni:ALL},
+  {id:'lt-stendi',  g:'Casa', sub:'Bucato', nome:'Stendere i vestiti', min:15, giorni:ALL},
+  {id:'lt-sistema', g:'Casa', sub:'Bucato', nome:'Smistare e sistemare', nota:'in 3 gruppi, la roba della bimba nelle sue cassette', min:15, giorni:ALL},
+  {id:'spazz',  g:'Casa', sub:'Spazzatura', nome:'Spazzatura', nota:"porta tutti i bidoni sotto, svuotali e sciacquali con l'acqua; quello dell'organico va pulito anche con le salviettine antibatteriche", min:20, giorni:ALL},
+  {id:'lavast', g:'Casa',       nome:'Lavastoviglie (tutto)', min:28, giorni:[]},
+  {id:'lavatr', g:'Casa',       nome:'Lavatrice (tutto)', min:40, giorni:[]},
+];
+const GROUPS=['Mattina','Casa','Pomeriggio','Pranzo e cena','Sera'];
+const SUBS=['Bucato','Cucina','Spazzatura',undefined];
+const SUBCLS={Bucato:'s-bucato',Cucina:'s-cucina',Spazzatura:'s-spazz'};
+const chiOf=v=>typeof v==='string'?v:(v&&typeof v==='object'?v.chi:null);
+const minOf=(v,t)=>(v&&typeof v==='object'&&typeof v.min==='number')?v.min:t.min;
+const orariOf=(v,t)=>[(v&&typeof v==='object'&&v.da)||t.orari[0],(v&&typeof v==='object'&&v.a)||t.orari[1]];
+const diffMin=(da,a)=>{const[h1,m1]=da.split(':').map(Number),[h2,m2]=a.split(':').map(Number);return(h2*60+m2)-(h1*60+m1)};
+const BYID=Object.fromEntries(TASKS.map(t=>[t.id,t]));
+const WD=['Dom','Lun','Mar','Mer','Gio','Ven','Sab'];
+const WDL=['Domenica','Lunedì','Martedì','Mercoledì','Giovedì','Venerdì','Sabato'];
+const MESI=['gennaio','febbraio','marzo','aprile','maggio','giugno','luglio','agosto','settembre','ottobre','novembre','dicembre'];
+
+const pad=n=>String(n).padStart(2,'0');
+const key=d=>d.getFullYear()+'-'+pad(d.getMonth()+1)+'-'+pad(d.getDate());
+const addDays=(d,n)=>{const x=new Date(d.getFullYear(),d.getMonth(),d.getDate());x.setDate(x.getDate()+n);return x};
+const monday=d=>addDays(d,-((d.getDay()+6)%7));
+const fmt=m=>{m=Math.round(m);if(m<60)return m+' min';const h=Math.floor(m/60),r=m%60;return r?h+' h '+r+' min':h+' h'};
+
+const today=new Date();
+const S={giorni:{},nomi:{a:'Mamma',b:'Papà'},bimba:'',sel:new Date(today.getFullYear(),today.getMonth(),today.getDate()),ready:false};
+const nomeTask=t=>t.nome.replace('{bimba}',S.bimba||'la bimba');
+
+const $=id=>document.getElementById(id);
+
+function dayTot(k){
+  const t={a:0,b:0};const f=(S.giorni[k]&&S.giorni[k].fatti)||{};
+  for(const id in f){const w=chiOf(f[id]);if((w==='a'||w==='b')&&BYID[id])t[w]+=minOf(f[id],BYID[id])}
+  for(const x of extraList(k)){if((x.chi==='a'||x.chi==='b')&&typeof x.min==='number')t[x.chi]+=x.min}
+  return t;
+}
+function extraList(k){
+  const e=(S.giorni[k]&&S.giorni[k].extra)||{};
+  return Object.keys(e).filter(id=>e[id]&&typeof e[id]==='object').map(id=>({id,...e[id]})).sort((x,y)=>(x.t||0)-(y.t||0));
+}
+
+/* ---------- GitHub storage ---------- */
+const CFG_KEY='chifacosa.cfg';
+function loadCfg(){try{return JSON.parse(localStorage.getItem(CFG_KEY))||{}}catch(_){return {}}}
+function storeCfg(c){try{localStorage.setItem(CFG_KEY,JSON.stringify(c));return true}catch(_){return false}}
+let CFG=loadCfg();
+const b64e=s=>{const b=new TextEncoder().encode(s);let r='';for(let i=0;i<b.length;i+=0x8000)r+=String.fromCharCode.apply(null,b.subarray(i,i+0x8000));return btoa(r)};
+const b64d=s=>new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g,'')),c=>c.charCodeAt(0)));
+class GhErr extends Error{constructor(status,msg){super(msg);this.status=status}}
+async function api(method,url,body){
+  let r;
+  try{r=await fetch('https://api.github.com'+url,{method,cache:'no-store',headers:{'Authorization':'Bearer '+CFG.token,'Accept':'application/vnd.github+json'},body:body?JSON.stringify(body):undefined})}
+  catch(_){throw new GhErr(0,'rete')}
+  let j=null;try{j=await r.json()}catch(_){}
+  return {status:r.status,ok:r.ok,json:j};
+}
+const FILES={};                 // path -> {sha, data}
+const monthPath=k=>'giorni/'+k.slice(0,7)+'.json';
+const SETTINGS='impostazioni.json';
+async function loadFile(path){
+  const r=await api('GET','/repos/'+CFG.repo+'/contents/'+path+'?t='+Date.now());
+  if(r.status===404){FILES[path]={sha:null,data:{}};return}
+  if(!r.ok)throw new GhErr(r.status,'lettura');
+  let data={};try{data=JSON.parse(b64d(r.json.content||''))||{}}catch(_){data={}}
+  FILES[path]={sha:r.json.sha,data};
+}
+function rebuild(){
+  const g={};for(const p in FILES)if(p.startsWith('giorni/'))Object.assign(g,FILES[p].data);
+  S.giorni=g;
+  const s=(FILES[SETTINGS]||{}).data||{};
+  S.nomi={a:(s.nomi&&s.nomi.a)||'Mamma',b:(s.nomi&&s.nomi.b)||'Papà'};S.bimba=s.bimba||'';
+}
+function mergeInto(dst,patch){
+  for(const k in patch){const v=patch[k];
+    if(v===null){delete dst[k]}
+    else if(typeof v==='object'&&!Array.isArray(v)){if(!dst[k]||typeof dst[k]!=='object'||Array.isArray(dst[k]))dst[k]={};mergeInto(dst[k],v)}
+    else dst[k]=v}
+  return dst;
+}
+function applyDay(data,k,patch){
+  if(patch===null){delete data[k];return}
+  data[k]=mergeInto(data[k]&&typeof data[k]==='object'?data[k]:{data:k,fatti:{}},JSON.parse(JSON.stringify(patch)));
+}
+let queue=Promise.resolve(),pending=0;
+function write(path,fn,msg){
+  if(!FILES[path])FILES[path]={sha:null,data:{}};
+  fn(FILES[path].data);rebuild();render();      // optimistic
+  pending++;setSync('Salvataggio…');
+  queue=queue.then(async()=>{
+    for(let i=0;i<4;i++){
+      if(i>0)await loadFile(path);
+      const f=FILES[path];const data=JSON.parse(JSON.stringify(f.data));
+      if(i>0)fn(data);
+      const body={message:msg,content:b64e(JSON.stringify(data,null,1)+'\n')};if(f.sha)body.sha=f.sha;
+      const r=await api('PUT','/repos/'+CFG.repo+'/contents/'+path,body);
+      if(r.ok){FILES[path]={sha:r.json.content.sha,data};return}
+      if(r.status===409||r.status===422)continue;
+      throw new GhErr(r.status,'scrittura');
+    }
+    throw new GhErr(409,'conflitto');
+  }).catch(e=>{showErr(e,true);return loadFile(path).catch(()=>{})})
+    .finally(()=>{pending--;rebuild();render();if(!pending&&!S.err)setSync('Salvato alle '+ora())});
+}
+function save(k,patch){write(monthPath(k),d=>applyDay(d,k,patch),patch===null?'Cancella '+k:'Aggiorna '+k)}
+const ora=()=>{const d=new Date();return pad(d.getHours())+':'+pad(d.getMinutes())};
+function setSync(txt,kind){const s=$('sync');s.className='sync'+(kind?' '+kind:(S.ready?' ok':''));$('sync-txt').textContent=txt;$('sync-now').hidden=!S.ready}
+function showErr(e,writing){
+  const st=e&&e.status;let m;
+  if(st===0)m='Non riesco a raggiungere GitHub. Controlla la connessione.';
+  else if(st===401)m='Il token non è valido o è scaduto. Creane uno nuovo in "Collegamento a GitHub".';
+  else if(st===403)m=writing?'Il token non ha il permesso di scrivere: in Contents serve "Read and write".':'GitHub ha rifiutato la richiesta (permessi o troppe richieste). Riprova tra poco.';
+  else if(st===404)m='Repository dei dati non trovato, oppure il token non ha accesso a quel repository.';
+  else if(st===409)m='Qualcun altro stava salvando nello stesso momento. Riprova.';
+  else m='Errore di GitHub ('+st+'). Riprova tra poco.';
+  S.err=true;setSync(m,'err');setStato(m,true);
+}
+function monthsInView(){const mon=monday(S.sel);return [...new Set([0,6].map(i=>monthPath(key(addDays(mon,i)))))]}
+async function ensureMonths(){
+  if(!S.ready)return;
+  const need=monthsInView().filter(p=>!FILES[p]);
+  if(!need.length)return;
+  try{await Promise.all(need.map(loadFile));rebuild();render()}catch(e){showErr(e)}
+}
+async function refresh(){
+  if(!S.ready||pending)return;
+  try{const paths=[SETTINGS,...new Set([...Object.keys(FILES).filter(p=>p.startsWith('giorni/')),...monthsInView()])];
+    await Promise.all(paths.map(loadFile));
+    if(pending)return;
+    S.err=false;rebuild();render();setStato('');setSync('Aggiornato alle '+ora());
+  }catch(e){showErr(e)}
+}
+async function connect(){
+  S.ready=false;S.err=false;
+  for(const p in FILES)delete FILES[p];
+  if(!CFG.repo||!CFG.token){
+    setSync('Non collegato','err');setStato('Per vedere e segnare i compiti, collega il repository dei dati qui sopra.',true);
+    $('setup-panel').open=true;$('cfg-off').hidden=true;rebuild();render();return}
+  setSync('Collegamento…');$('cfg-off').hidden=false;
+  try{
+    const r=await api('GET','/repos/'+CFG.repo);
+    if(!r.ok)throw new GhErr(r.status,'repo');
+    if(r.json&&r.json.private===false){setStato('Attenzione: il repository dei dati è pubblico. Rendilo privato da Settings su GitHub.',true)}
+    await Promise.all([SETTINGS,...monthsInView()].map(loadFile));
+    S.ready=true;rebuild();render();
+    if(!(r.json&&r.json.private===false))setStato('');
+    setSync('Aggiornato alle '+ora());$('setup-panel').open=false;
+  }catch(e){S.ready=false;showErr(e);$('setup-panel').open=true;render()}
+}
+setInterval(()=>{if(document.visibilityState==='visible')refresh()},30000);
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')refresh()});
+$('sync-now').addEventListener('click',refresh);
+
+(function initSetup(){
+  const host=location.hostname.match(/^([a-z0-9-]+)\.github\.io$/i);
+  $('cfg-repo').value=CFG.repo||(host?host[1]+'/chi-fa-cosa-dati':'');
+  $('cfg-save').addEventListener('click',()=>{
+    const repo=$('cfg-repo').value.trim().replace(/^https?:\/\/github\.com\//,'').replace(/\.git$/,'').replace(/\/$/,'');
+    const token=$('cfg-token').value.trim()||CFG.token;
+    if(!/^[\w.-]+\/[\w.-]+$/.test(repo)){$('cfg-msg').textContent='Scrivi il repository come utente/nome, per esempio mario/chi-fa-cosa-dati.';return}
+    if(!token){$('cfg-msg').textContent='Incolla il token.';return}
+    CFG={repo,token};$('cfg-token').value='';
+    $('cfg-msg').textContent=storeCfg(CFG)?'':'Questo browser non permette di ricordare il token: dovrai incollarlo di nuovo alla prossima apertura.';
+    connect();
+  });
+  $('cfg-off').addEventListener('click',()=>{CFG={repo:CFG.repo};storeCfg(CFG);$('cfg-msg').textContent='Token tolto da questo dispositivo.';connect()});
+})();
+function render(){
+  const mon=monday(S.sel), sun=addDays(mon,6);
+  $('wkrange').textContent=mon.getDate()+' '+(mon.getMonth()!==sun.getMonth()?MESI[mon.getMonth()]+' ':'')+'– '+sun.getDate()+' '+MESI[sun.getMonth()]+' '+sun.getFullYear();
+  const na=S.nomi.a||'Persona 1', nb=S.nomi.b||'Persona 2';
+  $('lblA').textContent=na;$('lblB').textContent=nb;
+  let wa=0,wb=0;const days=$('days');days.textContent='';
+  for(let i=0;i<7;i++){
+    const d=addDays(mon,i),k=key(d),t=dayTot(k);wa+=t.a;wb+=t.b;
+    const btn=document.createElement('button');
+    btn.className='day'+(k===key(S.sel)?' sel':'')+(k===key(today)?' today':'');
+    btn.dataset.k=k;btn.setAttribute('aria-label',WDL[d.getDay()]+' '+d.getDate()+(t.a+t.b?': '+na+' '+fmt(t.a)+', '+nb+' '+fmt(t.b):''));
+    if(k===key(S.sel))btn.setAttribute('aria-current','date');
+    const tot=t.a+t.b;
+    btn.innerHTML='<span class="wd"></span><span class="dn num"></span><span class="mini"><span style="background:var(--a);width:'+(tot?t.a/tot*100:0)+'%"></span><span style="background:var(--b);width:'+(tot?t.b/tot*100:0)+'%"></span></span>';
+    btn.querySelector('.wd').textContent=WD[d.getDay()];btn.querySelector('.dn').textContent=d.getDate();
+    if(!tot)btn.querySelector('.mini').style.opacity='.5';
+    days.appendChild(btn);
+  }
+  $('totA').textContent=fmt(wa);$('totB').textContent=fmt(wb);
+  const wt=wa+wb;$('barA').style.width=(wt?wa/wt*100:0)+'%';$('barB').style.width=(wt?wb/wt*100:0)+'%';
+  $('diff').textContent=!wt?'Nessun compito segnato in questa settimana.':
+    (wa===wb?'Siete pari.':(wa>wb?na:nb)+' ha fatto '+fmt(Math.abs(wa-wb))+' in più ('+Math.round(Math.max(wa,wb)/wt*100)+'% del totale).');
+
+  const sk=key(S.sel),wd=S.sel.getDay(),fatti=(S.giorni[sk]&&S.giorni[sk].fatti)||{};
+  $('dtitle').textContent=WDL[wd]+' '+S.sel.getDate()+' '+MESI[S.sel.getMonth()];
+  const dt=dayTot(sk);
+  $('daytot').innerHTML='<b class="a"></b> · <b class="b"></b>';
+  $('daytot').querySelector('.a').textContent=na+' '+fmt(dt.a);$('daytot').querySelector('.b').textContent=nb+' '+fmt(dt.b);
+
+  const list=$('list');
+  const dis=!S.ready;
+  const ae=document.activeElement;
+  if(ae&&ae.classList&&(ae.classList.contains('mininp')||ae.classList.contains('orainp')||ae.classList.contains('extinp'))&&list.contains(ae)){S.listStale=true}
+  else{ S.listStale=false; list.textContent='';
+  const asiloOggi=(S.giorni[sk]&&typeof S.giorni[sk].asilo==='boolean')?S.giorni[sk].asilo:(wd>=1&&wd<=5);
+  { const sec=document.createElement('div');sec.className='group';
+    const r=document.createElement('div');r.className='row';
+    r.innerHTML='<div><div class="tname">C\'è asilo oggi?</div><div class="tmeta">Senza asilo: a casa tutto il giorno, i lavoretti di casa sono facoltativi</div></div><div class="seg" role="group" aria-label="Asilo oggi"><button data-asilo="1">Sì</button><button data-asilo="0">No</button></div>';
+    r.querySelectorAll('button').forEach(b=>{b.setAttribute('aria-pressed',(b.dataset.asilo==='1')===asiloOggi?'true':'false');b.disabled=dis});
+    sec.appendChild(r);list.appendChild(sec); }
+  for(const g of GROUPS){
+    const bagnoSera=!!(S.giorni[sk]&&S.giorni[sk].bagno);
+    const items=TASKS.filter(t=>t.g===g&&((t.giorni.includes(wd)&&(t.bagno===undefined||t.bagno===bagnoSera)&&(t.modo===undefined||t.modo===(asiloOggi?'asilo':'casa')))||['a','b'].includes(chiOf(fatti[t.id]))));
+    if(!items.length)continue;
+    const sec=document.createElement('div');sec.className='group';
+    const h=document.createElement('h3');h.textContent=(g==='Casa'&&!asiloOggi)?'Casa (facoltativi)':g;sec.appendChild(h);
+    if(g==='Sera'){
+      const r=document.createElement('div');r.className='row';
+      r.innerHTML='<div class="tname">Bagnetto stasera?</div><div class="seg" role="group" aria-label="Bagnetto stasera"><button data-bagno="1">Sì</button><button data-bagno="0">No</button></div>';
+      r.querySelectorAll('button').forEach(b=>{b.setAttribute('aria-pressed',(b.dataset.bagno==='1')===bagnoSera?'true':'false');b.disabled=dis});
+      sec.appendChild(r);
+    }
+    items.sort((x,y)=>SUBS.indexOf(x.sub)-SUBS.indexOf(y.sub));
+    let lastSub=null;
+    for(const t of items){
+      if(g==='Casa'&&t.sub!==lastSub){lastSub=t.sub;const h4=document.createElement('h4');h4.textContent=t.sub||'Altro';h4.className=SUBCLS[t.sub]||'';sec.appendChild(h4)}
+      const who=chiOf(fatti[t.id]);
+      const row=document.createElement('div');row.className='row'+(who==='a'?' done-a':who==='b'?' done-b':'');
+      const txt=document.createElement('div');
+      const n=document.createElement('div');n.className='tname';n.textContent=nomeTask(t);
+      const m=document.createElement('div');m.className='tmeta';m.textContent=t.orari?'durata '+fmt(minOf(fatti[t.id],t)):'stima '+fmt(t.min)+(t.nota?' · '+t.nota:'');
+      txt.append(n,m);
+      if(t.orari){
+        const [da,a]=orariOf(fatti[t.id],t);const box=document.createElement('div');box.className='mins';
+        box.innerHTML='<label>Dalle</label><input type="time" class="orainp num"><label>alle</label><input type="time" class="orainp num">';
+        const ls=box.querySelectorAll('label'),ins=box.querySelectorAll('input');
+        [['da',da],['a',a]].forEach(([kk,val],i)=>{ins[i].id=kk+'-'+t.id;ls[i].htmlFor=ins[i].id;ins[i].value=val;ins[i].dataset.task=t.id;ins[i].dataset.k=kk;ins[i].disabled=dis});
+        txt.appendChild(box);
+      }
+      if((who==='a'||who==='b')&&!t.orari){
+        const lab=document.createElement('label');lab.className='mins';lab.htmlFor='min-'+t.id;lab.textContent='Minuti reali';
+        const inp=document.createElement('input');inp.type='number';inp.min='0';inp.max='600';inp.inputMode='numeric';
+        inp.id='min-'+t.id;inp.className='mininp num';inp.dataset.task=t.id;inp.value=minOf(fatti[t.id],t);inp.disabled=dis;
+        lab.appendChild(inp);txt.appendChild(lab);
+      }
+      const seg=document.createElement('div');seg.className='seg';seg.setAttribute('role','group');seg.setAttribute('aria-label','Chi ha fatto: '+nomeTask(t));
+      for(const p of ['a','b']){
+        const b=document.createElement('button');b.dataset.task=t.id;b.dataset.who=p;
+        b.textContent=p==='a'?na:nb;b.setAttribute('aria-pressed',who===p?'true':'false');b.disabled=dis;
+        seg.appendChild(b);
+      }
+      row.append(txt,seg);sec.appendChild(row);
+    }
+    if(g==='Casa'){
+      const h4=document.createElement('h4');h4.textContent='Extra';h4.className='s-extra';sec.appendChild(h4);
+      for(const x of extraList(sk)){
+        const row=document.createElement('div');row.className='row'+(x.chi==='a'?' done-a':x.chi==='b'?' done-b':'');
+        const txt=document.createElement('div');
+        const n=document.createElement('div');n.className='tname';n.textContent=x.nome||'Attività extra';
+        const m=document.createElement('div');m.className='tmeta';m.textContent=fmt(x.min||0)+' · ';
+        const del=document.createElement('button');del.className='linkbtn';del.textContent='Elimina';del.dataset.extDel=x.id;del.disabled=dis;m.appendChild(del);
+        txt.append(n,m);
+        const seg=document.createElement('div');seg.className='seg';seg.setAttribute('role','group');seg.setAttribute('aria-label','Chi ha fatto: '+(x.nome||'extra'));
+        for(const p of ['a','b']){const b=document.createElement('button');b.dataset.extWho=p;b.dataset.ext=x.id;b.dataset.who=p;b.textContent=p==='a'?na:nb;b.setAttribute('aria-pressed',x.chi===p?'true':'false');b.disabled=dis;seg.appendChild(b)}
+        row.append(txt,seg);sec.appendChild(row);
+      }
+      const add=document.createElement('div');add.className='addext';
+      add.innerHTML='<label for="ext-nome">Attività<input id="ext-nome" class="extinp" maxlength="60" placeholder="es. pulire il frigo"></label><label for="ext-min">Minuti<input id="ext-min" class="extinp num" type="number" min="1" max="600" inputmode="numeric" placeholder="15"></label><div class="seg" role="group" aria-label="Aggiungi per"><button data-ext-add="a"></button><button data-ext-add="b"></button></div>';
+      const ab=add.querySelectorAll('button');ab[0].textContent='+ '+na;ab[1].textContent='+ '+nb;
+      add.querySelectorAll('input,button').forEach(el=>el.disabled=dis);
+      sec.appendChild(add);
+    }
+    list.appendChild(sec);
+  }}
+  const ia=$('nome-a'),ib=$('nome-b');
+  if(document.activeElement!==ia)ia.value=S.nomi.a||'';
+  if(document.activeElement!==ib)ib.value=S.nomi.b||'';
+  ia.disabled=ib.disabled=dis;
+  const ic=$('nome-c');if(document.activeElement!==ic)ic.value=S.bimba||'';ic.disabled=dis;
+}
+
+
+function riassunto(k){
+  const [y,mo,dd]=k.split('-').map(Number),d=new Date(y,mo-1,dd),wd=d.getDay();
+  const g=S.giorni[k]||{},fatti=g.fatti||{};
+  const asiloOggi=typeof g.asilo==='boolean'?g.asilo:(wd>=1&&wd<=5),bagnoSera=!!g.bagno;
+  const nomi={a:S.nomi.a||'Persona 1',b:S.nomi.b||'Persona 2'};
+  const per={a:[],b:[]},tot={a:0,b:0};
+  for(const t of TASKS){const v=fatti[t.id],w=chiOf(v);if(w!=='a'&&w!=='b')continue;
+    const m=minOf(v,t);tot[w]+=m;let r=nomeTask(t)+' ('+fmt(m)+')';
+    if(t.orari){const [da,a]=orariOf(v,t);r=nomeTask(t)+' '+da+'–'+a+' ('+fmt(m)+')'}
+    per[w].push(r)}
+  for(const x of extraList(k)){if(x.chi!=='a'&&x.chi!=='b')continue;tot[x.chi]+=x.min||0;per[x.chi].push(x.nome+' ('+fmt(x.min||0)+', extra)')}
+  const nonFatti=TASKS.filter(t=>t.giorni.includes(wd)&&(t.bagno===undefined||t.bagno===bagnoSera)&&(t.modo===undefined||t.modo===(asiloOggi?'asilo':'casa'))&&!['a','b'].includes(chiOf(fatti[t.id]))&&!(t.g==='Casa'&&!asiloOggi)&&!(t.id==='ritiro'||t.id==='parco')).map(t=>nomeTask(t));
+  const L=['Riassunto di '+WDL[wd].toLowerCase()+' '+dd+' '+MESI[mo-1],'Asilo: '+(asiloOggi?'sì':'no')+' · Bagnetto: '+(bagnoSera?'sì':'no'),''];
+  for(const p of ['a','b']){L.push(nomi[p]+': '+fmt(tot[p]));if(per[p].length)per[p].forEach(r=>L.push('• '+r));else L.push('• niente segnato');L.push('')}
+  const ritiroFatto=['a','b'].includes(chiOf(fatti.ritiro))||['a','b'].includes(chiOf(fatti.parco));
+  if(asiloOggi&&!ritiroFatto)nonFatti.push('Ritiro dall’asilo');
+  if(nonFatti.length)L.push('Non ancora segnati: '+nonFatti.join(', '),'');
+  const mon=monday(d);let wa=0,wb=0;for(let i=0;i<7;i++){const t=dayTot(key(addDays(mon,i)));wa+=t.a;wb+=t.b}
+  L.push('Settimana finora: '+nomi.a+' '+fmt(wa)+' · '+nomi.b+' '+fmt(wb));
+  return L.join('\n');
+}
+
+$('share-btn').addEventListener('click',()=>{
+  const txt=riassunto(key(S.sel)),ta=$('share-text');ta.value=txt;$('share-box').hidden=false;
+  const msg=$('share-msg');
+  const fallback=()=>{msg.textContent='Selezionalo qui sotto e copialo.';ta.focus();ta.select()};
+  try{navigator.clipboard.writeText(txt).then(()=>{msg.textContent='Copiato. Incollalo dove vuoi, per esempio in chat.'},fallback)}catch(_){fallback()}
+});
+$('reset-btn').addEventListener('click',()=>{
+  if(!S.ready){setStato('Collega prima il repository dei dati.',true);return}
+  const k=key(S.sel),wd=S.sel.getDay();
+  $('reset-q').textContent='Vuoi davvero cancellare tutto quello che è segnato per '+WDL[wd].toLowerCase()+' '+S.sel.getDate()+' '+MESI[S.sel.getMonth()]+'? Compiti, minuti, extra e le risposte su asilo e bagnetto. Non si può annullare.';
+  $('reset-box').dataset.k=k;$('reset-box').hidden=false;$('reset-no').focus();
+});
+$('reset-no').addEventListener('click',()=>{$('reset-box').hidden=true;$('reset-btn').focus()});
+$('reset-yes').addEventListener('click',()=>{
+  const k=$('reset-box').dataset.k;$('reset-box').hidden=true;if(!k||!S.ready)return;
+  save(k,null);$('share-msg').textContent='Dati del giorno cancellati.';
+});
+function setStato(msg,warn){const s=$('stato');if(!msg){s.hidden=true;return}s.hidden=false;s.textContent=msg;s.className=warn?'note':'hint'}
+
+const cur=(k,field,id)=>(((S.giorni[k]||{})[field])||{})[id];
+$('list').addEventListener('click',e=>{
+  const xa=e.target.closest('button[data-ext-add]');
+  if(xa){if(xa.disabled)return;
+    const nome=$('ext-nome').value.trim(),min=Math.round(Number($('ext-min').value));
+    if(!nome){setStato('Scrivi il nome dell’attività extra.',true);$('ext-nome').focus();return}
+    if(!isFinite(min)||min<1||min>600){setStato('Scrivi i minuti, tra 1 e 600.',true);$('ext-min').focus();return}
+    setStato('');const k=key(S.sel),id='x'+Date.now().toString(36)+Math.random().toString(36).slice(2,5);
+    xa.blur();save(k,{extra:{[id]:{nome,min,chi:xa.dataset.extAdd,t:Date.now()}}});return}
+  const xw=e.target.closest('button[data-ext-who]');
+  if(xw){if(xw.disabled)return;const k=key(S.sel),id=xw.dataset.ext,c=cur(k,'extra',id);if(!c)return;
+    save(k,{extra:{[id]:{chi:c.chi===xw.dataset.extWho?null:xw.dataset.extWho}}});return}
+  const xd=e.target.closest('button[data-ext-del]');
+  if(xd){if(xd.disabled)return;save(key(S.sel),{extra:{[xd.dataset.extDel]:null}});return}
+  const ba=e.target.closest('button[data-asilo]');
+  if(ba){if(ba.disabled)return;save(key(S.sel),{asilo:ba.dataset.asilo==='1'});return}
+  const bb=e.target.closest('button[data-bagno]');
+  if(bb){if(bb.disabled)return;save(key(S.sel),{bagno:bb.dataset.bagno==='1'});return}
+  const b=e.target.closest('button[data-task]');if(!b||b.disabled)return;
+  const k=key(S.sel),id=b.dataset.task,c=cur(k,'fatti',id);
+  let next;
+  if(chiOf(c)===b.dataset.who)next=BYID[id].orari?{chi:null}:null;
+  else next={chi:b.dataset.who,min:minOf(c,BYID[id])};
+  save(k,{fatti:{[id]:next}});
+});
+$('list').addEventListener('change',e=>{
+  const oi=e.target.closest('.orainp');
+  if(oi){const k=key(S.sel),id=oi.dataset.task,t=BYID[id],c=cur(k,'fatti',id);
+    const old=orariOf(c,t);let [da,a]=old;
+    if(!/^\d\d:\d\d/.test(oi.value))return;
+    if(oi.dataset.k==='da')da=oi.value.slice(0,5);else a=oi.value.slice(0,5);
+    if(da===old[0]&&a===old[1])return;
+    const d=diffMin(da,a);
+    if(d<=0){setStato('L’orario di fine deve essere dopo quello di inizio.',true);return}
+    setStato('');
+    const patch={da,a,min:d};if(typeof c==='string')patch.chi=c;
+    save(k,{fatti:{[id]:patch}});return}
+  const inp=e.target.closest('.mininp');if(!inp)return;
+  const k=key(S.sel),id=inp.dataset.task,c=cur(k,'fatti',id),who=chiOf(c);
+  const v=Math.round(Number(inp.value));
+  if(!who||!inp.value||!isFinite(v)||v<0||v>600){inp.value=minOf(c,BYID[id]);return}
+  if(v===minOf(c,BYID[id]))return;
+  save(k,{fatti:{[id]:{chi:who,min:v}}});
+});
+$('list').addEventListener('focusout',e=>{
+  if(!e.target.classList)return;
+  if(e.target.classList.contains('orainp')||e.target.classList.contains('extinp')){S.listStale=true;setTimeout(()=>{const ae=document.activeElement;if(!(ae&&ae.classList&&(ae.classList.contains('orainp')||ae.classList.contains('extinp'))))render()},0);return}
+  if(e.target.classList.contains('mininp'))setTimeout(()=>{if(S.listStale)render()},0)});
+function goTo(d){$('share-box').hidden=true;$('reset-box').hidden=true;$('share-msg').textContent='';S.sel=d;render();ensureMonths()}
+$('days').addEventListener('click',e=>{const b=e.target.closest('.day');if(!b)return;const[y,m,d]=b.dataset.k.split('-').map(Number);goTo(new Date(y,m-1,d))});
+$('prev').addEventListener('click',()=>goTo(addDays(S.sel,-7)));
+$('next').addEventListener('click',()=>goTo(addDays(S.sel,7)));
+$('oggi').addEventListener('click',()=>goTo(new Date(today.getFullYear(),today.getMonth(),today.getDate())));
+
+function saveNames(){
+  const a=$('nome-a').value.trim()||'Mamma',b=$('nome-b').value.trim()||'Papà',c=$('nome-c').value.trim();
+  if(a===S.nomi.a&&b===S.nomi.b&&c===S.bimba)return;
+  if(!S.ready){render();return}
+  write(SETTINGS,d=>{d.nomi={a,b};d.bimba=c},'Aggiorna i nomi');
+}
+['nome-a','nome-b','nome-c'].forEach(id=>$(id).addEventListener('change',saveNames));
+
+render();
+connect();
+</script>
+</body>
+</html>
